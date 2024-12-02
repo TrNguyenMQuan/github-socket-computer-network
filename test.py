@@ -1,1 +1,0 @@
-print('Nam dep trai qua di')
