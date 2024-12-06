@@ -10,7 +10,8 @@ FORMAT = "utf-8"
 SIZE = 1024
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-os.chdir(script_dir)
+path = os.path.join(script_dir, DIRECTORY_OF_DATA)
+os.chdir(path)
 
 print(os.getcwd())
 

@@ -60,7 +60,7 @@ def downloadFile(client: socket.socket):
 
                 with open(f"dowloaded_{file_requested}", "wb") as file:
                     temp = 0
-                    while temp <= file_size:
+                    while temp < file_size:
                         data_received = client.recv(min(SIZE, file_size))
                         file.write(data_received)
                         temp += len(data_received)
