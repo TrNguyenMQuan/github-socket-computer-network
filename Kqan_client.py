@@ -3,11 +3,13 @@ import os
 import threading
 import time
 from tkinter import *
+import keyboard
 
 HOST = "127.0.0.1"
 PORT = 9999
 FORMAT = "utf-8"
 DOWNLOAD_FILE_NAME = "input.txt"
+SIZE = 1024 
 
 window = None
 file_listbox = None
@@ -41,19 +43,37 @@ def scanFileAfter5Secs(source_file_name):
 
 def displayGUI(list_new_files):
     global file_listbox, status_label
-    for file_name in pending_file:
-        file_listbox.insert(END, file_name)
+    for file_requested in pending_file:
+        file_listbox.insert(END, file_requested)
     status_label.config(text=f"Status: Detected {len(list_new_files)} new file(s)")
 
 
 def downloadFile(client: socket.socket):
     global status_label
-    while True:
-        while pending_file:
-            file_name = pending_file.pop(0)
-            print(f"Downloading {file_name}........")
-        status_label.config(text="Status: No new files to download")
-        time.sleep(5)
+    try:
+        while True:
+            while pending_file:
+                file_requested = pending_file.pop(0)
+                client.sendall(file_requested.encode(FORMAT))
+                file_size = int(client.recv(SIZE).decode(FORMAT))
+                print(f"Downloading {file_requested}........")
+
+                with open(f"dowloaded_{file_requested}", "wb") as file:
+                    temp = 0
+                    while temp <= file_size:
+                        data_received = client.recv(min(SIZE, file_size))
+                        file.write(data_received)
+                        temp += len(data_received)
+
+                print(f"File {file_requested} downloaded successfully \n")
+            
+            status_label.config(text="Status: No new files to download")
+            time.sleep(5)
+
+    except KeyboardInterrupt:
+        client.close()
+    finally:
+        client.close()
 
 
 def setupGUI():
@@ -76,8 +96,13 @@ def setupGUI():
 def runClient():
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client.connect((HOST, PORT))
-    print(f"Connected to server: {client.recv(1024).decode('utf_8')}")
-
+    try:
+        print("Connected successfully ! \n")    
+    except Exception as error:
+        print(f"Something's wrong with {error}")
+        client.close()
+        exit(0)
+    
     threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(DOWNLOAD_FILE_NAME,)).start()
     threading.Thread(target=downloadFile, daemon=True, args=(client,)).start()
 
