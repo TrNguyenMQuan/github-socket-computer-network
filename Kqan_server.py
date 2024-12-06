@@ -1,6 +1,7 @@
 import os 
 import socket
 import keyboard
+import threading
 
 DIRECTORY_OF_DATA = ".\Data"
 DATA_FILE_NAME = "list of files name.txt"
@@ -45,13 +46,7 @@ def printListFile(source_file_name, list_file):
                 f.write(f"{key}     {value}\n")
         
 
-def runServer(HOST, PORT):
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server.bind((HOST, PORT))
-    server.listen()
-    print("Server is runing... ")
-
-    client_socket, addr = server.accept()
+def handle_client(client_socket, addr):
     try:
         while True:
             file_requested = client_socket.recv(SIZE).decode(FORMAT)
@@ -78,6 +73,49 @@ def runServer(HOST, PORT):
         client_socket.close()
     finally:
         client_socket.close()
+
+def runServer(HOST, PORT):
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    server.listen()
+    print("Server is runing... ")
+    
+    try:
+        while True:
+            server_socket, addr = server.accept()
+            print(f"Connected to {addr}")
+            thread = threading.Thread(target=handle_client, args=(server_socket, addr))
+            thread.start()
+    except KeyboardInterrupt:
+        server.close()
+
+    # client_socket, addr = server.accept()
+    # try:
+    #     while True:
+    #         file_requested = client_socket.recv(SIZE).decode(FORMAT)
+            
+    #         if not file_requested:
+    #             print("Client disconnected")
+    #             break
+
+    #         file_size = os.path.getsize(file_requested)
+    #         client_socket.send(str(file_size).encode(FORMAT))
+    #         print(f"Client requested file: {file_requested} with {file_size}")
+
+    #         with open(file_requested, "rb") as file:
+    #             while True:
+    #                 data_send = file.read(SIZE)
+
+    #                 if not data_send:
+    #                     break
+                    
+    #                 client_socket.sendall(data_send)
+
+    #         print(f"File : {file_requested} sended successfully \n")
+    # except KeyboardInterrupt:
+    #     client_socket.close()
+    # finally:
+    #     client_socket.close()
 
 def main():
     runServer(HOST, PORT)
