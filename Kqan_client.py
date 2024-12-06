@@ -5,7 +5,7 @@ import time
 from tkinter import *
 import keyboard
 
-HOST = "127.0.0.1"
+HOST = "10.0.7.136"
 PORT = 9999
 FORMAT = "utf-8"
 DOWNLOAD_FILE_NAME = "input.txt"
