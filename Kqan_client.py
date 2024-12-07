@@ -5,6 +5,7 @@ import time
 from tkinter import *
 import keyboard
 
+# HOST = "10.0.7.136"
 HOST = "127.0.0.1"
 PORT = 9999
 FORMAT = "utf-8"
@@ -55,10 +56,11 @@ def downloadFile(client: socket.socket):
             while pending_file:
                 file_requested = pending_file.pop(0)
                 client.sendall(file_requested.encode(FORMAT))
+                # select folder to save file 
                 file_size = int(client.recv(SIZE).decode(FORMAT))
                 print(f"Downloading {file_requested}........")
 
-                with open(f"dowloaded_{file_requested}", "wb") as file:
+                with open(f"dowloaded_{file_requested}", "wb") as file:# thay
                     temp = 0
                     while temp < file_size:
                         data_received = client.recv(min(SIZE, file_size))
@@ -116,3 +118,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+
+# file đã download
+# file không có trong thư mục server_data
