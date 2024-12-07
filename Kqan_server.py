@@ -3,7 +3,7 @@ import socket
 import keyboard
 import threading
 
-DIRECTORY_OF_DATA = ".\Data"
+DIRECTORY_OF_DATA = ".\Server_data"
 DATA_FILE_NAME = "list of files name.txt"
 HOST = "127.0.0.1"
 PORT = 9999
