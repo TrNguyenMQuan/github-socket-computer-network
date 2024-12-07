@@ -55,7 +55,6 @@ def handleDownloadFile(socket_download_file):
     file_name = socket_download_file.recv(BUFFSIZE).decode("utf_8")
     file_size = os.path.getsize(file_name)
     socket_download_file.sendall(str(file_size).encode("utf_8"))
-    socket_download_file.close()
 
 def handleDownLoadChunk(socket_download_chunk):
     socket_download_chunk.sendall("CHUNK-OK".encode("utf_8"))
@@ -70,7 +69,7 @@ def handleDownLoadChunk(socket_download_chunk):
     with open(file_name, "rb") as file:
         while sent_data < chunk_size:
             file.seek(start + sent_data)
-            data = file.read(min(chunk_size - BUFFSIZE, BUFFSIZE))
+            data = file.read(min(chunk_size - sent_data, BUFFSIZE))
             socket_download_chunk.sendall(data)
             sent_data += len(data)
 
