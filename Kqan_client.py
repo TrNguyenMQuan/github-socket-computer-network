@@ -106,16 +106,17 @@ def downloadFile(client: socket.socket):
                 file_size = int(client.recv(BUFFERSIZE).decode(FORMAT))
                 file_size = int(file_size)
                 #open dialog to select folder to save file
-                # download_folder_path = filedialog.askdirectory(title="Chọn thư mục để lưu file")
-                # if not download_folder_path:
-                #     print("No folder selected")
-                #     return
-                # selected_folder = os.path.join(download_folder_path, pending_file[0])
+                download_folder_path = filedialog.askdirectory(title="Chọn thư mục để lưu file")
+                if not download_folder_path:
+                    print("No folder selected")
+                    return
+                output_file = os.path.join(download_folder_path, os.path.basename(ensure_unique_filename(file_requested, download_folder_path)))
+                
                 number_of_threads = 4
                 part = file_size // number_of_threads
                 remain_data = file_size % number_of_threads
 
-                with open(file_requested, "wb") as file:
+                with open(output_file, "wb") as file:
                     file.write(b'\0' * file_size)
 
                 for i in range(number_of_threads):
@@ -131,7 +132,7 @@ def downloadFile(client: socket.socket):
                         continue
                     t.join()
 
-                with open(file_requested, "r+b") as file:
+                with open(output_file, "r+b") as file:
                     for chunk in chunks:
                         file.seek(chunk["start"])   
                         file.write(chunk["data"])
@@ -146,6 +147,17 @@ def downloadFile(client: socket.socket):
     finally:
         client.close()
  
+def ensure_unique_filename(file_path, download_folder_path): # Ensure the filename is unique by appending a number if the file already exists
+    base, ext = os.path.splitext(file_path)
+    counter = 1
+    file_name = os.path.basename(file_path)
+    unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
+    
+    while os.path.exists(unique_file_path):
+        unique_file_path = f"{base}_{counter}{ext}"
+        counter += 1
+    
+    return unique_file_path
 
 def handleGreeting():
     socket_greeting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
