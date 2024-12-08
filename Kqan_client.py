@@ -15,7 +15,8 @@ FORMAT = "utf-8"
 ADDR = (HOST, PORT)
 DOWNLOAD_FILE_NAME = "input.txt"
 file_path = os.path.join(os.getcwd(), DOWNLOAD_FILE_NAME)
-BUFFERSIZE = 1024 * 1024
+BUFFERSIZE = 1024 * 1024 * 10
+NUMBER_OF_THREADS = 4
 
 window = None
 file_listbox = None
@@ -27,6 +28,8 @@ lock = threading.Lock()
 
 def scanFileAfter5Secs(source_file_name):
     position = 0
+    with open(source_file_name, "wb") as file:
+        pass
     while True:
         try:
             with open(source_file_name, 'r') as file:
@@ -87,11 +90,13 @@ def handleDownLoadChunk(file_name, start, end, index):
 
     socket_download_chunk.close()
 
-def downloadFile(client: socket.socket):
+def downloadFile():
     global status_label
     try:
         while True:
             while pending_file:
+                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client.connect(ADDR)
                 #send type of request
                 client.sendall(f"FILE".encode("utf_8"))
                 request = client.recv(7).decode("utf_8")
@@ -105,6 +110,7 @@ def downloadFile(client: socket.socket):
         
                 file_size = int(client.recv(BUFFERSIZE).decode(FORMAT))
                 file_size = int(file_size)
+                print(file_size)
                 #open dialog to select folder to save file
                 download_folder_path = filedialog.askdirectory(title="Chọn thư mục để lưu file")
                 if not download_folder_path:
@@ -112,39 +118,42 @@ def downloadFile(client: socket.socket):
                     return
                 output_file = os.path.join(download_folder_path, os.path.basename(ensure_unique_filename(file_requested, download_folder_path)))
                 
-                number_of_threads = 4
-                part = file_size // number_of_threads
-                remain_data = file_size % number_of_threads
+                part = file_size // NUMBER_OF_THREADS
+                remain_data = file_size % NUMBER_OF_THREADS
 
                 with open(output_file, "wb") as file:
                     file.write(b'\0' * file_size)
 
-                for i in range(number_of_threads):
+                for i in range(NUMBER_OF_THREADS):
                     start = part * i
                     end = start + part - 1
-                    if i == number_of_threads - 1:
+                    if i == NUMBER_OF_THREADS - 1:
                         end += remain_data
-                    t = threading.Thread(target=handleDownLoadChunk, args=(file_requested, start, end, i + 1)).start()
+                    t = threading.Thread(target=handleDownLoadChunk, args=(file_requested, start, end, i + 1))
+                    t.start()
                 
-                main_thread = threading.current_thread()
+                main_thread = threading.main_thread()
                 for t in threading.enumerate():
-                    if t is main_thread:
+                    if t is main_thread or t.name == "scanFileAfter5Secs" or t.name == "downloadFile":
+                        # print(t)
                         continue
                     t.join()
 
+                # print(len(chunks))
                 with open(output_file, "r+b") as file:
                     for chunk in chunks:
                         file.seek(chunk["start"])   
                         file.write(chunk["data"])
+                chunks.clear()
 
                 print(f"File {file_requested} downloaded successfully \n")
-                        
+                client.close()
+                
             status_label.config(text="Status: No new files to download")
-            time.sleep(5)
+            time.sleep(1)
+
 
     except KeyboardInterrupt:
-        client.close()
-    finally:
         client.close()
  
 def ensure_unique_filename(file_path, download_folder_path): # Ensure the filename is unique by appending a number if the file already exists
@@ -198,9 +207,9 @@ def runClient():
         print(f"Something's wrong with {error}")
         client.close()
         exit(0)
-    
-    threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(file_path,)).start()
-    threading.Thread(target=downloadFile, daemon=True, args=(client,)).start()
+    client.close()
+    threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(file_path,), name="scanFileAfter5Secs").start()
+    threading.Thread(target=downloadFile, daemon=True, args=(), name="downloadFile").start()
 
     window.mainloop() 
 

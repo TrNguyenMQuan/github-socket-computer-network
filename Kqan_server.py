@@ -11,9 +11,9 @@ BUFFSIZE = 1024 * 1024
 FORMAT = "utf-8"
 
 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-path = os.path.join(script_dir, DIRECTORY_OF_DATA)
-os.chdir(path)
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# path = os.path.join(script_dir, DIRECTORY_OF_DATA)
+# os.chdir(path)
 
 print(os.getcwd())
 
