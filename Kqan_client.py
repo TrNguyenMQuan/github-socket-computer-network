@@ -214,23 +214,43 @@ def runClient():
     try: 
         handleGreeting()
     except Exception as error:
+        print(f"Error: {error}")
         exit(0)
     threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(file_path,), name="scanFileAfter5Secs").start()
     threading.Thread(target=downloadFile, daemon=True, args=(), name="downloadFile").start()
 
-    window.mainloop() 
+    try:
+        window.mainloop()
+    except KeyboardInterrupt:
+        print("Disconnected by Crtl + C")
+        window.destroy()
 
 
 def main():
-    
-    setupGUI()
-    runClient()
+    global window
 
+    try:
+        setupGUI()
+        runClient()
+    except KeyboardInterrupt:
+        try:
+            if window is not None and window.winfo_exists():
+                window.quit() 
+                window.destroy()
+        except Exception as error:
+            print(f"Error :{error}")
+        finally:
+            window = None
+    except Exception as error:
+        print(f": {error}")
+    finally:
+        if window is not None:
+            try:
+                window.quit() 
+                window.destroy()
+            except:
+                pass
 
 if __name__ == "__main__":
     main()
 
-
-
-# file đã download
-# file không có trong thư mục server_data
