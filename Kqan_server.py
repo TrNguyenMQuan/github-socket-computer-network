@@ -65,13 +65,14 @@ def handleDownloadFile(socket_download_file):
     socket_download_file.sendall("FILE-OK".encode("utf_8"))
     file_name = socket_download_file.recv(BUFFSIZE).decode("utf_8")
     file_size = os.path.getsize(file_name)
+    print(f"Sending {file_name} with size {file_size}")
     socket_download_file.sendall(str(file_size).encode("utf_8"))
 
 def handleDownLoadChunk(socket_download_chunk):
     socket_download_chunk.sendall("CHUNK-OK".encode("utf_8"))
-    print("downloading chunks")
+
     file_name, start, end = socket_download_chunk.recv(BUFFSIZE).decode("utf_8").split(":")
-    print(f"{(file_name, start, end)}")
+ 
     start = int(start)
     end = int(end)
     chunk_size = end - start + 1
@@ -90,7 +91,7 @@ def handle_client(client_socket, addr):
     print(f"Connected to {addr}")
     try:
         request = client_socket.recv(BUFFSIZE).decode("utf_8")
-        print(f"{request}          ")
+
         if request == "GREETING":
             handleGreeting(client_socket)
         elif request == "FILE":
