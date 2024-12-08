@@ -116,13 +116,15 @@ def downloadFile():
                 if not download_folder_path:
                     print("No folder selected")
                     return
-                output_file = os.path.join(download_folder_path, os.path.basename(ensure_unique_filename(file_requested, download_folder_path)))
+                file_name_download = handle_duplicate_filename(file_requested, download_folder_path)
+                output_file = os.path.join(download_folder_path, file_name_download)
                 
                 part = file_size // NUMBER_OF_THREADS
                 remain_data = file_size % NUMBER_OF_THREADS
 
                 with open(output_file, "wb") as file:
-                    file.write(b'\0' * file_size)
+                    # file.write(b'\0' * file_size)
+                    pass
 
                 for i in range(NUMBER_OF_THREADS):
                     start = part * i
@@ -147,6 +149,7 @@ def downloadFile():
                 chunks.clear()
 
                 print(f"File {file_requested} downloaded successfully \n")
+                print(f"Ctrl + C to exit \n")
                 client.close()
                 
             status_label.config(text="Status: No new files to download")
@@ -155,18 +158,22 @@ def downloadFile():
 
     except KeyboardInterrupt:
         client.close()
- 
-def ensure_unique_filename(file_path, download_folder_path): # Ensure the filename is unique by appending a number if the file already exists
-    base, ext = os.path.splitext(file_path)
-    counter = 1
-    file_name = os.path.basename(file_path)
+
+# xử lý trùng file trong 1 folder
+def handle_duplicate_filename(file_name, download_folder_path):
+    base, ext = os.path.splitext(file_name) #split dùng
+    counter = 0
     unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
     
-    while os.path.exists(unique_file_path):
-        unique_file_path = f"{base}_{counter}{ext}"
-        counter += 1
-    
-    return unique_file_path
+    for i in os.listdir(download_folder_path):
+        file = i
+        base2, ext2 = os.path.splitext(file)
+        base_tmp = base2.split("(")
+        if base_tmp[0] == base:
+            counter += 1
+    if counter == 0:
+        return f"{base}{ext}"
+    return  f"{base}({counter}){ext}"
 
 def handleGreeting():
     socket_greeting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -215,6 +222,7 @@ def runClient():
 
 
 def main():
+    
     setupGUI()
     runClient()
 
