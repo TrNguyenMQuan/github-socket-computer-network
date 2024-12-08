@@ -4,18 +4,17 @@ import keyboard
 import threading
 
 DIRECTORY_OF_DATA = ".\Server_data"
-DATA_FILE_NAME = "list of files name.txt"
+DATA_FILE_NAME = "list_of_names.txt"
+ORIGIN_DIRECTORY = os.getcwd()
 HOST = "127.0.0.1"
 PORT = 9999
 BUFFSIZE = 1024 * 1024
 FORMAT = "utf-8"
 
 
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-# path = os.path.join(script_dir, DIRECTORY_OF_DATA)
-# os.chdir(path)
-
-print(os.getcwd())
+script_dir = os.path.dirname(os.path.abspath(__file__))
+path = os.path.join(script_dir, DIRECTORY_OF_DATA)
+os.chdir(path)
 
 
 def convertFileSize(file_size):
@@ -30,10 +29,10 @@ def convertFileSize(file_size):
         unit = f"{int(file_size / 1024**3)} GB"
     return unit
 
-def listFileInPath(path):
+def listFileInPath():
     list_file = []
-    for name in os.listdir(path):
-        file_size =  os.path.getsize(os.path.join(path, name))
+    for name in os.listdir():
+        file_size =  os.path.getsize(name)
         object = {
             name : convertFileSize(file_size)
         }
@@ -46,9 +45,21 @@ def printListFile(source_file_name, list_file):
             for key, value in file.items():
                 f.write(f"{key}     {value}\n")
 
-def handleGreeting(socket_greeting):
-    socket_greeting.sendall("GREETING-OK".encode("utf_8"))
-    socket_greeting.close()
+def handleGreeting(socket):
+    socket.sendall("GREETING-OK".encode("utf_8"))
+    list_file = listFileInPath()
+    os.chdir(ORIGIN_DIRECTORY)
+    printListFile(DATA_FILE_NAME, list_file)
+
+    file_size = os.path.getsize(DATA_FILE_NAME)
+    with open(DATA_FILE_NAME, "rb") as file:
+        file_data = file.read()
+    
+    socket.sendall(f"{DATA_FILE_NAME}:{file_size}".encode("utf_8"))
+    socket.sendall(file_data)
+    os.chdir(path)
+
+    socket.close()
 
 def handleDownloadFile(socket_download_file):
     socket_download_file.sendall("FILE-OK".encode("utf_8"))
@@ -106,6 +117,7 @@ def runServer(HOST, PORT):
 
 def main():
     runServer(HOST, PORT)
+    
 
 if __name__ == "__main__":
     main()

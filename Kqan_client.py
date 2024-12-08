@@ -177,8 +177,13 @@ def handleGreeting():
     if request != "GREETING-OK":
         print("fail to communicate with server")
         return
+    print("Connected successfully ! \n")   
+    file_name, file_size = socket_greeting.recv(1024).decode(FORMAT).split(":")
+    file_data = socket_greeting.recv(int(file_size))
+    with open(file_name, "wb") as file:
+        file.write(file_data)
+    
 
-    print("Finished greeting")
     socket_greeting.close()
 
 def setupGUI():
@@ -199,15 +204,10 @@ def setupGUI():
 
 
 def runClient():
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((HOST, PORT))
-    try:
-        print("Connected successfully ! \n")    
+    try: 
+        handleGreeting()
     except Exception as error:
-        print(f"Something's wrong with {error}")
-        client.close()
         exit(0)
-    client.close()
     threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(file_path,), name="scanFileAfter5Secs").start()
     threading.Thread(target=downloadFile, daemon=True, args=(), name="downloadFile").start()
 
