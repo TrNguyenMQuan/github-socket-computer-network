@@ -6,6 +6,8 @@ from tkinter import *
 import tkinter as tk
 from tkinter import filedialog
 import keyboard
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
 
 # HOST = "10.0.7.136"
@@ -31,6 +33,7 @@ def scanFileAfter5Secs(source_file_name):
     with open(source_file_name, "wb") as file:
         pass
     while True:
+        list = []
         try:
             with open(source_file_name, 'r') as file:
                 file.seek(position)
@@ -41,11 +44,15 @@ def scanFileAfter5Secs(source_file_name):
                     if not data:
                         break
                     if data != "\n":
-                        pending_file.append(data.strip("\n"))
+                        data = data.strip("\n")
+                        pending_file.append(data)
+                        list.append(data)
+                        
+    
                 position = file.tell()  
 
                 if pending_file:
-                    displayGUI(pending_file)
+                    displayGUI(list)
         except Exception as error:
             print(f"Error scanning input file: {error} ")
 
@@ -59,7 +66,7 @@ def displayGUI(list_new_files):
     status_label.config(text=f"Status: Detected {len(list_new_files)} new file(s)")
 
 
-def handleDownLoadChunk(file_name, start, end, index):
+def handleDownLoadChunk(file_name, start, end, index, output_file):
     socket_download_chunk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_download_chunk.connect(ADDR)
     socket_download_chunk.sendall(f"CHUNK".encode("utf_8"))
@@ -74,19 +81,15 @@ def handleDownLoadChunk(file_name, start, end, index):
     chunk_data = b""
     data_recv = 0
 
-    while data_recv < chunk_size:
-        data = socket_download_chunk.recv(min(BUFFERSIZE, chunk_size - data_recv))
-        data_recv += len(data)
-        chunk_data += data
-        print(f"downloading {file_name} part {index} : {int((data_recv * 100) / chunk_size)} % \n")
-    
-    chunk = {
-        "start" : start,
-        "end" : end,
-        "data" : chunk_data
-    }
-    with lock:
-        chunks.append(chunk)
+    with tqdm(total=chunk_size, desc=f"Downloading {file_name} part {index} : ", bar_format="{desc}{percentage:3.0f}%", position=index - 1, mininterval=0.5) as pbar:
+        with open(output_file, "r+b") as file:
+            file.seek(start)
+            while data_recv < chunk_size:
+                data = socket_download_chunk.recv(min(BUFFERSIZE, chunk_size - data_recv))
+                data_recv += len(data)
+                file.write(data)
+                pbar.update(len(data))
+                time.sleep(0.5)
 
     socket_download_chunk.close()
 
@@ -123,32 +126,26 @@ def downloadFile():
                 remain_data = file_size % NUMBER_OF_THREADS
 
                 with open(output_file, "wb") as file:
-                    # file.write(b'\0' * file_size)
                     pass
 
-                for i in range(NUMBER_OF_THREADS):
-                    start = part * i
-                    end = start + part - 1
-                    if i == NUMBER_OF_THREADS - 1:
-                        end += remain_data
-                    t = threading.Thread(target=handleDownLoadChunk, args=(file_requested, start, end, i + 1))
-                    t.start()
-                
-                main_thread = threading.main_thread()
-                for t in threading.enumerate():
-                    if t is main_thread or t.name == "scanFileAfter5Secs" or t.name == "downloadFile":
-                        # print(t)
-                        continue
-                    t.join()
+                with ThreadPoolExecutor(max_workers=NUMBER_OF_THREADS) as executor:
+                    futures = []
+                    for i in range(NUMBER_OF_THREADS):
+                        start = part * i
+                        end = start + part - 1
+                        if i == NUMBER_OF_THREADS - 1:
+                            end += remain_data 
+                        chunk_size = end - start + 1
 
-                # print(len(chunks))
-                with open(output_file, "r+b") as file:
-                    for chunk in chunks:
-                        file.seek(chunk["start"])   
-                        file.write(chunk["data"])
-                chunks.clear()
+                        futures.append(executor.submit(handleDownLoadChunk, file_requested, start, end, i + 1, output_file))
 
-                print(f"File {file_requested} downloaded successfully \n")
+                    for future in futures:
+                        future.result() 
+
+                if (file_size == os.path.getsize(output_file)):
+                    print(f"File {file_requested} downloaded successfully \n")
+                else:
+                    print(f"Fail to download {file_requested} \n")
                 print(f"Ctrl + C to exit \n")
                 client.close()
                 
