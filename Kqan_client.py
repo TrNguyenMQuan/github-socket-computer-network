@@ -51,8 +51,10 @@ def scanFileAfter5Secs(source_file_name):
     
                 position = file.tell()  
 
-                if pending_file:
+                if list:
                     displayGUI(list)
+                    list.clear()
+
         except Exception as error:
             print(f"Error scanning input file: {error} ")
 
