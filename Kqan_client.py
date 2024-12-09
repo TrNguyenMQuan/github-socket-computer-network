@@ -3,22 +3,33 @@ import os
 import threading
 import time
 from tkinter import *
+import tkinter as tk
+from tkinter import filedialog
 import keyboard
 
+
+# HOST = "10.0.7.136"
 HOST = "127.0.0.1"
 PORT = 9999
 FORMAT = "utf-8"
+ADDR = (HOST, PORT)
 DOWNLOAD_FILE_NAME = "input.txt"
-SIZE = 1024 
+file_path = os.path.join(os.getcwd(), DOWNLOAD_FILE_NAME)
+BUFFERSIZE = 1024 * 1024 * 10
+NUMBER_OF_THREADS = 4
 
 window = None
 file_listbox = None
 status_label = None
 pending_file = []
+chunks = []
+lock = threading.Lock()
 
 
 def scanFileAfter5Secs(source_file_name):
     position = 0
+    with open(source_file_name, "wb") as file:
+        pass
     while True:
         try:
             with open(source_file_name, 'r') as file:
@@ -48,33 +59,139 @@ def displayGUI(list_new_files):
     status_label.config(text=f"Status: Detected {len(list_new_files)} new file(s)")
 
 
-def downloadFile(client: socket.socket):
+def handleDownLoadChunk(file_name, start, end, index):
+    socket_download_chunk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket_download_chunk.connect(ADDR)
+    socket_download_chunk.sendall(f"CHUNK".encode("utf_8"))
+    
+    request = socket_download_chunk.recv(8).decode("utf_8")
+    if request != "CHUNK-OK":
+        print("Fail to download chunk")
+        return
+    
+    socket_download_chunk.sendall(f"{file_name}:{start}:{end}".encode("utf_8"))
+    chunk_size = end - start + 1
+    chunk_data = b""
+    data_recv = 0
+
+    while data_recv < chunk_size:
+        data = socket_download_chunk.recv(min(BUFFERSIZE, chunk_size - data_recv))
+        data_recv += len(data)
+        chunk_data += data
+        print(f"downloading {file_name} part {index} : {int((data_recv * 100) / chunk_size)} % \n")
+    
+    chunk = {
+        "start" : start,
+        "end" : end,
+        "data" : chunk_data
+    }
+    with lock:
+        chunks.append(chunk)
+
+    socket_download_chunk.close()
+
+def downloadFile():
     global status_label
     try:
         while True:
             while pending_file:
+                client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                client.connect(ADDR)
+                #send type of request
+                client.sendall(f"FILE".encode("utf_8"))
+                request = client.recv(7).decode("utf_8")
+                if request != "FILE-OK":
+                    print("fail to download file")
+                    return
+                #send file requested
                 file_requested = pending_file.pop(0)
                 client.sendall(file_requested.encode(FORMAT))
-                file_size = int(client.recv(SIZE).decode(FORMAT))
                 print(f"Downloading {file_requested}........")
+        
+                file_size = int(client.recv(BUFFERSIZE).decode(FORMAT))
+                file_size = int(file_size)
+                print(file_size)
+                #open dialog to select folder to save file
+                download_folder_path = filedialog.askdirectory(title="Chọn thư mục để lưu file")
+                if not download_folder_path:
+                    print("No folder selected")
+                    return
+                file_name_download = handle_duplicate_filename(file_requested, download_folder_path)
+                output_file = os.path.join(download_folder_path, file_name_download)
+                
+                part = file_size // NUMBER_OF_THREADS
+                remain_data = file_size % NUMBER_OF_THREADS
 
-                with open(f"dowloaded_{file_requested}", "wb") as file:
-                    temp = 0
-                    while temp < file_size:
-                        data_received = client.recv(min(SIZE, file_size))
-                        file.write(data_received)
-                        temp += len(data_received)
+                with open(output_file, "wb") as file:
+                    # file.write(b'\0' * file_size)
+                    pass
+
+                for i in range(NUMBER_OF_THREADS):
+                    start = part * i
+                    end = start + part - 1
+                    if i == NUMBER_OF_THREADS - 1:
+                        end += remain_data
+                    t = threading.Thread(target=handleDownLoadChunk, args=(file_requested, start, end, i + 1))
+                    t.start()
+                
+                main_thread = threading.main_thread()
+                for t in threading.enumerate():
+                    if t is main_thread or t.name == "scanFileAfter5Secs" or t.name == "downloadFile":
+                        # print(t)
+                        continue
+                    t.join()
+
+                # print(len(chunks))
+                with open(output_file, "r+b") as file:
+                    for chunk in chunks:
+                        file.seek(chunk["start"])   
+                        file.write(chunk["data"])
+                chunks.clear()
 
                 print(f"File {file_requested} downloaded successfully \n")
-            
+                print(f"Ctrl + C to exit \n")
+                client.close()
+                
             status_label.config(text="Status: No new files to download")
-            time.sleep(5)
+            time.sleep(1)
+
 
     except KeyboardInterrupt:
         client.close()
-    finally:
-        client.close()
 
+# xử lý trùng file trong 1 folder
+def handle_duplicate_filename(file_name, download_folder_path):
+    base, ext = os.path.splitext(file_name) #split dùng
+    counter = 0
+    unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
+    
+    for i in os.listdir(download_folder_path):
+        file = i
+        base2, ext2 = os.path.splitext(file)
+        base_tmp = base2.split("(")
+        if base_tmp[0] == base:
+            counter += 1
+    if counter == 0:
+        return f"{base}{ext}"
+    return  f"{base}({counter}){ext}"
+
+def handleGreeting():
+    socket_greeting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket_greeting.connect(ADDR)
+    socket_greeting.sendall(f"GREETING".encode("utf_8"))
+    
+    request = socket_greeting.recv(11).decode("utf_8")
+    if request != "GREETING-OK":
+        print("fail to communicate with server")
+        return
+    print("Connected successfully ! \n")   
+    file_name, file_size = socket_greeting.recv(1024).decode(FORMAT).split(":")
+    file_data = socket_greeting.recv(int(file_size))
+    with open(file_name, "wb") as file:
+        file.write(file_data)
+    
+
+    socket_greeting.close()
 
 def setupGUI():
     global window, status_label, file_listbox
@@ -94,25 +211,45 @@ def setupGUI():
 
 
 def runClient():
-    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((HOST, PORT))
-    try:
-        print("Connected successfully ! \n")    
+    try: 
+        handleGreeting()
     except Exception as error:
-        print(f"Something's wrong with {error}")
-        client.close()
+        print(f"Error: {error}")
         exit(0)
-    
-    threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(DOWNLOAD_FILE_NAME,)).start()
-    threading.Thread(target=downloadFile, daemon=True, args=(client,)).start()
+    threading.Thread(target=scanFileAfter5Secs, daemon=True, args=(file_path,), name="scanFileAfter5Secs").start()
+    threading.Thread(target=downloadFile, daemon=True, args=(), name="downloadFile").start()
 
-    window.mainloop() 
+    try:
+        window.mainloop()
+    except KeyboardInterrupt:
+        print("Disconnected by Crtl + C")
+        window.destroy()
 
 
 def main():
-    setupGUI()
-    runClient()
+    global window
 
+    try:
+        setupGUI()
+        runClient()
+    except KeyboardInterrupt:
+        try:
+            if window is not None and window.winfo_exists():
+                window.quit() 
+                window.destroy()
+        except Exception as error:
+            print(f"Error :{error}")
+        finally:
+            window = None
+    except Exception as error:
+        print(f": {error}")
+    finally:
+        if window is not None:
+            try:
+                window.quit() 
+                window.destroy()
+            except:
+                pass
 
 if __name__ == "__main__":
     main()
