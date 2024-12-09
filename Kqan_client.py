@@ -159,9 +159,8 @@ def downloadFile():
     except KeyboardInterrupt:
         client.close()
 
-# xử lý trùng file trong 1 folder
 def handle_duplicate_filename(file_name, download_folder_path):
-    base, ext = os.path.splitext(file_name) #split dùng
+    base, ext = os.path.splitext(file_name)
     counter = 0
     unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
     
