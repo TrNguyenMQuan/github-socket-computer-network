@@ -11,6 +11,7 @@ PORT = 9999
 BUFFSIZE = 1024 * 1024
 FORMAT = "utf-8"
 
+
 script_dir = os.path.dirname(os.path.abspath(__file__))
 path = os.path.join(script_dir, DIRECTORY_OF_DATA)
 os.chdir(path)
@@ -106,6 +107,7 @@ def runServer(HOST, PORT):
     server.bind((HOST, PORT))
     server.listen()
     print("Server is runing... ")
+    
     try:
         while True:
             server_socket, addr = server.accept()
@@ -116,6 +118,7 @@ def runServer(HOST, PORT):
 
 def main():
     runServer(HOST, PORT)
+    
 
 if __name__ == "__main__":
     main()

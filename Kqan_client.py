@@ -4,7 +4,7 @@ import threading
 import time
 from tkinter import *
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import keyboard
 
 
@@ -13,6 +13,7 @@ HOST = "127.0.0.1"
 PORT = 9999
 FORMAT = "utf-8"
 ADDR = (HOST, PORT)
+SOURCE_FILE = "list_of_names.txt"
 DOWNLOAD_FILE_NAME = "input.txt"
 file_path = os.path.join(os.getcwd(), DOWNLOAD_FILE_NAME)
 BUFFERSIZE = 1024 * 1024 * 10
@@ -23,16 +24,44 @@ file_listbox = None
 status_label = None
 pending_file = []
 chunks = []
+downloaded_file = set()
+source_file_name = set()
 lock = threading.Lock()
 
 
-def scanFileAfter5Secs(source_file_name):
+def displayListSourceFile(SOURCE_FILE):
+    try:
+        with open(SOURCE_FILE, 'r') as file:
+            print("[ List of file can download from server: ]")
+            while True:
+                data = file.readline()
+
+                if not data or data == "\n":
+                    break
+
+                print(data, end="")
+                data = data.strip()
+                parts = data.rsplit(" ", 2)
+                if len(parts) >= 3:
+                    name = ' '.join(parts[:-2]).strip()
+                    source_file_name.add(name)
+                
+    except Exception as error:
+        print(f"Error when reading file: {error}")
+        file.close()
+    finally:
+        file.close()
+
+
+
+def scanFileAfter5Secs(input_file):
     position = 0
-    with open(source_file_name, "wb") as file:
+    with open(input_file, "wb") as file:
         pass
     while True:
         try:
-            with open(source_file_name, 'r') as file:
+            list_new_file = []
+            with open(input_file, 'r') as file:
                 file.seek(position)
 
                 while True:
@@ -40,23 +69,39 @@ def scanFileAfter5Secs(source_file_name):
 
                     if not data:
                         break
-                    if data != "\n":
+
+                    if data != "\n" and data.strip() in source_file_name:
+                        list_new_file.append(data.strip("\n"))
                         pending_file.append(data.strip("\n"))
+                    elif data != "\n" and data.strip() not in source_file_name:
+                        list_new_file.append("Invalid file name")
                 position = file.tell()  
 
-                if pending_file:
-                    displayGUI(pending_file)
+                if list_new_file:
+                    displayGUI(list_new_file)
         except Exception as error:
             print(f"Error scanning input file: {error} ")
+            file.close()
+        finally:
+            file.close()
 
         time.sleep(5)
 
 
 def displayGUI(list_new_files):
     global file_listbox, status_label
-    for file_requested in pending_file:
+    for file_requested in list_new_files:
         file_listbox.insert(END, file_requested)
     status_label.config(text=f"Status: Detected {len(list_new_files)} new file(s)")
+
+def showDuplicateFileWarning(file_requested):
+    if file_requested in downloaded_file:
+        option = messagebox.askyesno(
+            title = "File Already Downloaded",
+            message = f"File: '{file_requested}' has already been downloaded. \n"
+                        "Do you want to download it again ?"
+        )
+        return option
 
 
 def handleDownLoadChunk(file_name, start, end, index):
@@ -90,6 +135,7 @@ def handleDownLoadChunk(file_name, start, end, index):
 
     socket_download_chunk.close()
 
+
 def downloadFile():
     global status_label
     try:
@@ -105,7 +151,12 @@ def downloadFile():
                     return
                 #send file requested
                 file_requested = pending_file.pop(0)
+                if showDuplicateFileWarning(file_requested) == False:
+                    print(f"Skipping {file_requested}")
+                    continue
+
                 client.sendall(file_requested.encode(FORMAT))
+
                 print(f"Downloading {file_requested}........")
         
                 file_size = int(client.recv(BUFFERSIZE).decode(FORMAT))
@@ -149,6 +200,7 @@ def downloadFile():
                 chunks.clear()
 
                 print(f"File {file_requested} downloaded successfully \n")
+                downloaded_file.add(file_requested)
                 print(f"Ctrl + C to exit \n")
                 client.close()
                 
@@ -230,8 +282,10 @@ def main():
     global window
 
     try:
+        displayListSourceFile(SOURCE_FILE)
         setupGUI()
         runClient()
+
     except KeyboardInterrupt:
         try:
             if window is not None and window.winfo_exists():
