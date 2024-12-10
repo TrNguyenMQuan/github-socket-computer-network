@@ -117,7 +117,7 @@ def downloadFile():
                 file_size = int(file_size)
                 print(file_size)
                 #open dialog to select folder to save file
-                download_folder_path = filedialog.askdirectory(title="Chọn thư mục để lưu file")
+                download_folder_path = filedialog.askdirectory(title="Select folder to save file")
                 if not download_folder_path:
                     print("No folder selected")
                     return
@@ -158,9 +158,8 @@ def downloadFile():
     except KeyboardInterrupt:
         client.close()
 
-# xử lý trùng file trong 1 folder
 def handle_duplicate_filename(file_name, download_folder_path):
-    base, ext = os.path.splitext(file_name) #split dùng
+    base, ext = os.path.splitext(file_name)
     counter = 0
     unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
     
