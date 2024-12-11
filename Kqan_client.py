@@ -159,19 +159,24 @@ def downloadFile():
         client.close()
 
 def handle_duplicate_filename(file_name, download_folder_path):
-    base, ext = os.path.splitext(file_name)
-    counter = 0
-    unique_file_path = os.path.join(os.path.basename(download_folder_path),file_name)
+    # file name and file extension
+    base_name, ext = os.path.splitext(file_name)
+    list_numbers = set()
     
-    for i in os.listdir(download_folder_path):
-        file = i
-        base2, ext2 = os.path.splitext(file)
-        base_tmp = base2.split("(")
-        if base_tmp[0] == base:
-            counter += 1
-    if counter == 0:
-        return f"{base}{ext}"
-    return  f"{base}({counter}){ext}"
+    for file in os.listdir(download_folder_path):
+        if file == file_name:
+            list_numbers.add(0)
+            continue
+        base_tmp, ext_tmp = os.path.splitext(file)
+        base_tmpsplit = base_tmp.split()
+        if base_tmpsplit[0] == base_name and ext_tmp == ext:
+            list_numbers.add(base_tmpsplit[1][0])
+    count = 0
+    while count in list_numbers:
+        count += 1
+    if count == 0:
+        return file_name
+    return f"{base_name}({count}){ext}"
 
 def handleGreeting():
     socket_greeting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
