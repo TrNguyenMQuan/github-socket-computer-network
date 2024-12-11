@@ -170,7 +170,7 @@ def handle_duplicate_filename(file_name, download_folder_path):
         base_tmp, ext_tmp = os.path.splitext(file)
         base_tmpsplit = base_tmp.split()
         if base_tmpsplit[0] == base_name and ext_tmp == ext:
-            list_numbers.add(base_tmpsplit[1][0])
+            list_numbers.add(int(base_tmpsplit[1][0]))
     count = 0
     while count in list_numbers:
         count += 1
