@@ -119,15 +119,14 @@ def handleDownLoadChunk(file_name, start, end, index, output_file):
     chunk_size = end - start + 1
     data_recv = 0
 
-    with tqdm(total=chunk_size, desc=f"Downloading {file_name} part {index} : ", bar_format="{desc}{percentage:3.0f}%", position=index - 1, mininterval=0.5) as pbar:
-        with open(output_file, "r+b") as file:
-            file.seek(start)
-            while data_recv < chunk_size:
-                data = socket_download_chunk.recv(min(BUFFERSIZE, chunk_size - data_recv))
-                data_recv += len(data)
-                file.write(data)
-                pbar.update(len(data))
-                time.sleep(0.5)
+    with open(output_file, "r+b") as file:
+        file.seek(start)
+        while data_recv < chunk_size:
+            data = socket_download_chunk.recv(min(BUFFERSIZE, chunk_size - data_recv))
+            data_recv += len(data)
+            file.write(data)
+            time.sleep(0.5)
+            print(f"Downloading {file_name} part {index} {(data_recv * 100) // chunk_size} %")
 
     socket_download_chunk.close()
 
