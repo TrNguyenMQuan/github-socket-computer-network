@@ -2,15 +2,13 @@ import os
 import socket
 import keyboard
 import threading
-import time
 
 DIRECTORY_OF_DATA = ".\Server_data"
 DATA_FILE_NAME = "list_of_names.txt"
-HOST = "10.0.21.200"
+HOST = "127.0.0.1"
 PORT = 9999
 BUFFSIZE = 1024 * 1024
 FORMAT = "utf-8"
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 path = os.path.join(script_dir, DIRECTORY_OF_DATA)
@@ -29,6 +27,7 @@ def convertFileSize(file_size):
         unit = f"{int(file_size / 1024**3)} GB"
     return unit
 
+
 def listFileInPath():
     list_file = []
     for name in os.listdir():
@@ -44,6 +43,7 @@ def printListFile(source_file_name, list_file):
         for file in list_file:
             for key, value in file.items():
                 f.write(f"{key}     {value}\n")
+
 
 def handleGreeting(socket):
     socket.sendall("GREETING-OK".encode("utf_8"))
@@ -65,6 +65,7 @@ def handleGreeting(socket):
 
     socket.close()
 
+
 def handleDownloadFile(socket_download_file):
     socket_download_file.sendall("FILE-OK".encode("utf_8"))
     file_name = socket_download_file.recv(BUFFSIZE).decode("utf_8")
@@ -75,8 +76,7 @@ def handleDownloadFile(socket_download_file):
 def handleDownLoadChunk(socket_download_chunk):
     socket_download_chunk.sendall("CHUNK-OK".encode("utf_8"))
 
-    file_name, start, end = socket_download_chunk.recv(BUFFSIZE).decode("utf_8").split(":")
- 
+    file_name, start, end = socket_download_chunk.recv(BUFFSIZE).decode("utf_8").split(":") 
     start = int(start)
     end = int(end)
     chunk_size = end - start + 1
@@ -90,6 +90,7 @@ def handleDownLoadChunk(socket_download_chunk):
             sent_data += len(data)
 
     socket_download_chunk.close()
+
 
 def handle_client(client_socket, addr):
     print(f"Connected to {addr}")
@@ -119,6 +120,7 @@ def runServer(HOST, PORT):
             thread.start()
     except KeyboardInterrupt:
         server.close()
+
 
 def main():
     runServer(HOST, PORT)

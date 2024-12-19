@@ -6,12 +6,10 @@ from tkinter import *
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import keyboard
-from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
 
-# HOST = "10.0.7.136"
-HOST = "10.0.21.200"
+HOST = "127.0.0.1"
 PORT = 9999
 FORMAT = "utf-8"
 ADDR = (HOST, PORT)
@@ -34,7 +32,7 @@ lock = threading.Lock()
 def displayListSourceFile(SOURCE_FILE):
     try:
         with open(SOURCE_FILE, 'r') as file:
-            print("[ List of file can download from server: ]")
+            print("[ List of file can download from server ]")
             while True:
                 data = file.readline()
 
@@ -55,7 +53,6 @@ def displayListSourceFile(SOURCE_FILE):
         file.close()
 
 
-
 def scanFileAfter5Secs(input_file):
     position = 0
     with open(input_file, "wb") as file:
@@ -71,7 +68,6 @@ def scanFileAfter5Secs(input_file):
 
                     if not data:
                         break
-
 
                     if data != "\n" and data.strip() in source_file_name:
                         list_new_file.append(data.strip("\n"))
@@ -97,6 +93,7 @@ def displayGUI(list_new_files):
         file_listbox.insert(END, file_requested)
     status_label.config(text=f"Status: Detected {len(list_new_files)} new file(s)")
 
+
 def showDuplicateFileWarning(file_requested):
     if file_requested in downloaded_file:
         option = messagebox.askyesno(
@@ -105,6 +102,8 @@ def showDuplicateFileWarning(file_requested):
                         "Do you want to download it again ?"
         )
         return option
+    
+
 def handleDownLoadChunk(file_name, start, end, index, output_file):
     socket_download_chunk = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_download_chunk.connect(ADDR)
@@ -142,7 +141,7 @@ def downloadFile():
                 client.sendall(f"FILE".encode("utf_8"))
                 request = client.recv(7).decode("utf_8")
                 if request != "FILE-OK":
-                    print("fail to download file")
+                    print("Fail to download file")
                     return
                 #send file requested
                 file_requested = pending_file.pop(0)
@@ -156,7 +155,7 @@ def downloadFile():
         
                 file_size = int(client.recv(BUFFERSIZE).decode(FORMAT))
                 file_size = int(file_size)
-                print(file_size)
+            
                 #open dialog to select folder to save file
                 download_folder_path = filedialog.askdirectory(title="Select folder to save file")
                 if not download_folder_path:
@@ -200,9 +199,9 @@ def downloadFile():
             status_label.config(text="Status: No new files to download")
             time.sleep(1)
 
-
     except KeyboardInterrupt:
         client.close()
+
 
 def handleDuplicateFileName(file_name, download_folder_path):
     base_name, ext = os.path.splitext(file_name)
@@ -223,6 +222,7 @@ def handleDuplicateFileName(file_name, download_folder_path):
         return file_name
     return f"{base_name}({count}){ext}"
 
+
 def handleGreeting():
     socket_greeting = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     socket_greeting.connect(ADDR)
@@ -230,7 +230,7 @@ def handleGreeting():
     
     request = socket_greeting.recv(11).decode("utf_8")
     if request != "GREETING-OK":
-        print("fail to communicate with server")
+        print("Fail to communicate with server")
         return
     print("Connected successfully ! \n")   
     file_name, file_size = socket_greeting.recv(1024).decode(FORMAT).split(":")
@@ -240,8 +240,8 @@ def handleGreeting():
     with open(file_name, "wb") as file:
         file.write(file_data)
     
-
     socket_greeting.close()
+
 
 def setupGUI():
     global window, status_label, file_listbox
@@ -302,6 +302,7 @@ def main():
                 window.destroy()
             except:
                 pass
+
 
 if __name__ == "__main__":
     main()
